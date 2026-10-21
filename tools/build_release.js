@@ -20,6 +20,7 @@ const files = [
     'package.json',
     'RELEASE_README.md',
     'test_node.js',
+    'tools/test_release_worker_deadline.js',
     'css/style.css',
     'js/cards.js',
     'js/engine.js',

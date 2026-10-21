@@ -16,5 +16,16 @@ vendor/
 *.pyc
 __pycache__/
 
-# 意外保存的错误输出，不属于源代码
-h.length)
+# 研发工具（发布所需构建与核验工具除外）
+tools/*
+!tools/build_release.js
+!tools/verify_release.js
+!tools/test_release_worker_deadline.js
+
+# 策略候选和中间导出，不是网页运行时
+js/ai-policy-v*.js
+js/*candidate*.js
+
+# 研究历史（发布和源码维护由精简README覆盖）
+PRO_LEVEL_TRAINING.md
+TRAINING_PLAN.md

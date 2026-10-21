@@ -27,8 +27,10 @@ for (const [relative, expected] of Object.entries(manifest.files)) {
 for (const required of ['index.html', 'README.md', 'test_node.js', 'js/v5-rollout-worker.js']) {
     if (!Object.hasOwn(manifest.files, required)) fail(`清单未覆盖必需文件 ${required}`);
 }
-const test = spawnSync(process.execPath, ['test_node.js'], { cwd: releaseDir, encoding: 'utf8' });
-process.stdout.write(test.stdout || '');
-process.stderr.write(test.stderr || '');
-if (test.status !== 0) fail(`发布包核心测试退出码 ${test.status}`);
-console.log(`发布核验通过：${Object.keys(manifest.files).length} 个文件，核心测试通过`);
+for (const testFile of ['test_node.js', 'tools/test_release_worker_deadline.js']) {
+    const test = spawnSync(process.execPath, [testFile], { cwd: releaseDir, encoding: 'utf8' });
+    process.stdout.write(test.stdout || '');
+    process.stderr.write(test.stderr || '');
+    if (test.status !== 0) fail(`发布包测试 ${testFile} 退出码 ${test.status}`);
+}
+console.log(`发布核验通过：${Object.keys(manifest.files).length} 个文件，核心规则与Worker截止测试通过`);

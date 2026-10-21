@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0b4a2d">
+    <title>掼蛋游戏</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="css/style.css?v=2.8.0">
+</head>
+<body>
+    <main class="game-container">
+        <header class="header">
+            <h1>🃏 掼蛋游戏 🃏</h1>
+            <div class="game-info" aria-label="比赛信息">
+                <div class="info-item">当前级牌：<span id="level-card">2</span></div>
+                <div class="info-item">局数：<span id="round">1</span></div>
+                <div class="info-item">队伍A：<span id="level-a">2</span></div>
+                <div class="info-item">队伍B：<span id="level-b">2</span></div>
+                <div class="info-item" title="AI只学习你的公开出牌和过牌，不读取隐藏手牌">AI学习：<span id="ai-learning">184步 / 0局</span></div>
+            </div>
+            <nav class="toolbar" aria-label="辅助功能">
+                <button type="button" class="toolbar-btn" id="btn-sound" onclick="toggleSound()" title="开启或关闭音效">🔊 音效</button>
+                <button type="button" class="toolbar-btn" id="btn-deep-thinking" onclick="toggleDeepThinking()" aria-pressed="false" title="在后台比较可能的后续牌局；超过700毫秒自动回退快速策略">🧠 深度思考：关</button>
+                <button type="button" class="toolbar-btn" onclick="exportHumanStrategyLog()" title="导出仅保存在本机的真人出牌训练数据">🧠 导出我的牌谱</button>
+                <button type="button" class="toolbar-btn" onclick="showProAISettings()" title="连接本机专业AI服务；不可用时自动回退">♟ 专业AI</button>
+                <button type="button" class="toolbar-btn" onclick="showHistoryModal()" title="查看对局记录">📊 记录</button>
+                <button type="button" class="toolbar-btn" onclick="showHelpModal()" title="查看游戏规则">❓ 帮助</button>
+            </nav>
+        </header>
+
+        <section class="table-area" aria-label="掼蛋牌桌">
+            <div class="player player-top" id="player-top" data-player="2">
+                <div class="player-name">
+                    <span>玩家2</span>
+                    <span class="team-badge team-a">A队</span>
+                    <span class="card-count">0张</span>
+                </div>
+                <div class="cards-row"></div>
+            </div>
+
+            <div class="player player-left" id="player-left" data-player="1">
+                <div class="player-name">
+                    <span>玩家1</span>
+                    <span class="team-badge team-b">B队</span>
+                    <span class="card-count">0张</span>
+                </div>
+                <div class="cards-row"></div>
+            </div>
+
+            <div class="center-area">
+                <h3>出牌区域</h3>
+                <div class="played-cards" id="played-cards"></div>
+                <div class="play-info" id="play-info" aria-live="polite"></div>
+            </div>
+
+            <div class="player player-right" id="player-right" data-player="3">
+                <div class="player-name">
+                    <span>玩家3</span>
+                    <span class="team-badge team-b">B队</span>
+                    <span class="card-count">0张</span>
+                </div>
+                <div class="cards-row"></div>
+            </div>
+
+            <div class="player player-bottom" id="player-bottom" data-player="0">
+                <div class="player-name">
+                    <span>你</span>
+                    <span class="team-badge team-a">A队</span>
+                    <span class="card-count">0张</span>
+                </div>
+                <div class="cards-row"></div>
+            </div>
+        </section>
+
+        <div class="message-area">
+            <div class="message" id="message" role="status" aria-live="polite">点击“开始游戏”发牌</div>
+        </div>
+
+        <div class="hand-type-hint" id="hand-type-hint" aria-live="polite"></div>
+
+        <div class="controls" aria-label="出牌操作">
+            <button type="button" class="btn btn-primary" id="btn-start" onclick="startNewGame()">开始游戏</button>
+            <button type="button" class="btn btn-hint" id="btn-recommend" onclick="recommendAndHighlight()" disabled>推荐出牌</button>
+            <button type="button" class="btn btn-hint" id="btn-sort" onclick="sortMyCards()">整理手牌</button>
+            <button type="button" class="btn btn-secondary" id="btn-clear" onclick="clearSelection()" disabled>清除选择</button>
+            <button type="button" class="btn btn-primary" id="btn-play" onclick="playSelectedCards()" disabled>出牌</button>
+            <button type="button" class="btn btn-secondary" id="btn-pass" onclick="passTurn()" disabled>过牌</button>
+            <button type="button" class="btn btn-danger" id="btn-surrender" onclick="surrenderGame()" disabled>投降</button>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="round-end-modal" role="dialog" aria-modal="true" aria-label="本局结算">
+        <div class="modal">
+            <div class="modal-content" id="round-end-content"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="game-over-modal" role="dialog" aria-modal="true" aria-label="比赛结束">
+        <div class="modal">
+            <div class="modal-content" id="game-over-content"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="history-modal" role="dialog" aria-modal="true" aria-label="对局记录">
+        <div class="modal">
+            <div class="modal-content" id="history-content"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="help-modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <div class="modal">
+            <div class="modal-content">
+                <h2 id="help-title">游戏规则</h2>
+                <h3>基本规则</h3>
+                <ul>
+                    <li>四人游戏，对角为队友：玩家0与玩家2一队，玩家1与玩家3一队。</li>
+                    <li>使用两副扑克牌，共108张，每人27张。</li>
+                    <li>级牌从2开始，根据每局名次升级；红桃级牌是“逢人配”百搭牌。</li>
+                </ul>
+
+                <h3>支持牌型</h3>
+                <ul>
+                    <li><strong>单张、对子、三张、三带二</strong></li>
+                    <li><strong>顺子</strong>：固定5张连续单牌，A可用于A-2-3-4-5。</li>
+                    <li><strong>木板</strong>：固定3对连续对子，如33-44-55。</li>
+                    <li><strong>钢板</strong>：固定2组连续三张，如333-444。</li>
+                    <li><strong>炸弹</strong>：4张或更多相同点数，先比较张数，再比较点数。</li>
+                    <li><strong>同花顺</strong>：5张连续且花色相同的牌。</li>
+                    <li><strong>四王</strong>：两张大王与两张小王组成的最大牌型。</li>
+                </ul>
+
+                <h3>特殊规则</h3>
+                <ul>
+                    <li><strong>接风</strong>：最后出牌者已经出完时，由其尚未出完的队友接风。</li>
+                    <li><strong>进贡与还牌</strong>：下游贡最大的非红桃级牌，上游还一张不高于10的普通牌；贡方合计持有两张大王可抗贡。</li>
+                    <li><strong>A必打</strong>：升到A不会立即结束，必须实际打完A级局；A级方取得头游且队友不是末游才算最终获胜。</li>
+                </ul>
+
+                <h3>操作说明</h3>
+                <ul>
+                    <li>点击手牌可选中或取消；牌型提示会实时显示当前选择。</li>
+                    <li>快捷键：Enter 出牌，Esc 过牌，S 整理手牌。</li>
+                </ul>
+
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-primary" onclick="closeModal('help-modal')">我知道了</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="pro-ai-modal" role="dialog" aria-modal="true" aria-labelledby="pro-ai-title">
+        <div class="modal"><div class="modal-content">
+            <h2 id="pro-ai-title">专业 AI</h2>
+            <p>连接本机运行的兼容模型服务。模型每一步都须通过本游戏规则校验；服务不可用会自动使用内置 AI。</p>
+            <label><input id="pro-ai-enabled" type="checkbox"> 启用专业AI</label>
+            <label>本机服务地址 <input id="pro-ai-endpoint" type="url" size="38"></label>
+            <label>等待上限（毫秒） <input id="pro-ai-timeout" type="number" min="300" max="5000"></label>
+            <p id="pro-ai-status"></p>
+            <div class="modal-buttons"><button class="btn btn-primary" onclick="saveProAISettingsFromUI()">保存</button><button class="btn btn-secondary" onclick="closeModal('pro-ai-modal')">取消</button></div>
+        </div></div>
+    </div>
+
+    <script src="js/cards.js?v=2.8.0"></script>
+    <script src="js/engine.js?v=3.0.1"></script>
+    <script src="js/ai-policy-weights.js?v=3.1.0"></script>
+    <script src="js/ai-policy.js?v=2.8.1"></script>
+    <script src="js/human-profile.js?v=2.9.11"></script>
+    <script src="js/ai.js?v=3.3.0-g20261021"></script>
+    <script src="js/v5-decision-transport.js?v=1.0.0"></script>
+    <script src="js/v5-worker-client.js?v=1.0.0"></script>
+    <script src="js/pro-ai-bridge.js?v=3.0.5-g20261020"></script>
+    <script src="js/strategy-storage.js?v=2.9.9"></script>
+    <script src="js/game.js?v=3.2.0-g20261021"></script>
+</body>
+</html>
