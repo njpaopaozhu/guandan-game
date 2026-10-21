@@ -1,6 +1,6 @@
 # 掼蛋游戏
 
-> **当前本地发布版本：3.2.0（2026-10-21）**。正式发布包由 `node tools/build_release.js --verify` 构建，默认使用快速AI；“深度思考”在后台Worker运行，主线程到达700ms即终止后台任务并回退合法快速动作。运行、校验和范围说明见 [`RELEASE_README.md`](RELEASE_README.md)。
+> **当前本地发布版本：3.2.0（2026-10-21）**。正式发布包由 `node tools/build_release.js --verify` 构建，默认使用快速AI；“深度思考”在后台Worker运行，主线程到达700ms即终止后台任务并回退合法快速动作。运行、校验和范围说明见 [`RELEASE_README.md`](RELEASE_README.md)，本轮验证见 [`docs/RELEASE_QUALITY_20261021.md`](docs/RELEASE_QUALITY_20261021.md)。
 
 一个完整的掼蛋游戏实现，包含智能AI对手、完整规则系统和现代化UI界面。
 
