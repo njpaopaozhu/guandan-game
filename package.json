@@ -1,0 +1,15 @@
+{
+  "name": "guandan-local",
+  "version": "3.2.0",
+  "private": true,
+  "description": "本地单机掼蛋游戏：完整规则、内置AI与可验证发布包",
+  "scripts": {
+    "test": "node test_node.js",
+    "release:build": "node tools/build_release.js",
+    "release:verify": "node tools/verify_release.js",
+    "test:release": "node tools/build_release.js --verify"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

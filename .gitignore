@@ -1,0 +1,20 @@
+# 可重复构建产物
+dist/
+
+# 浏览器与自动化临时产物
+.playwright-cli/
+output/
+
+# 训练数据、实验检查点和历史评测档案（由完整项目备份单独保存）
+experiments/
+data/
+models/
+results/
+vendor/
+*.pt
+*.npz
+*.pyc
+__pycache__/
+
+# 意外保存的错误输出，不属于源代码
+h.length)
