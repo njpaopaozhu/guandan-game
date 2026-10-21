@@ -25,7 +25,11 @@ tools/*
 # 策略候选和中间导出，不是网页运行时
 js/ai-policy-v*.js
 js/*candidate*.js
+js/ai-policy-kscb-*.js
+js/ai-policy-local-human-*.js
 
-# 研究历史（发布和源码维护由精简README覆盖）
+# 旧版浏览器试验页由test_node.js替代
+test.html
+test.js
 PRO_LEVEL_TRAINING.md
 TRAINING_PLAN.md
