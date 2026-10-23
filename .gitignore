@@ -5,6 +5,19 @@ dist/
 .playwright-cli/
 output/
 
+# 本机凭据、会话、日志与依赖，禁止随源码上传
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+node_modules/
+playwright/.auth/
+storage-state*.json
+
 # 训练数据、实验检查点和历史评测档案（由完整项目备份单独保存）
 experiments/
 data/
