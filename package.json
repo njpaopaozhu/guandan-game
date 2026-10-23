@@ -5,6 +5,10 @@
   "description": "本地单机掼蛋游戏：完整规则、内置AI与可验证发布包",
   "scripts": {
     "test": "node test_node.js",
+    "start:online": "node server/index.js",
+    "test:online": "node --test tests/online.test.js tests/online-client.test.js",
+    "test:online:load": "node --test tests/online-load.test.js",
+    "release:online": "node tools/build_online_release.js --verify",
     "release:build": "node tools/build_release.js",
     "release:verify": "node tools/verify_release.js",
     "test:release": "node tools/build_release.js --verify"

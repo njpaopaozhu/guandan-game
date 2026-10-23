@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>好友房 · 本机管理</title>
+<link rel="icon" href="data:,"><link rel="stylesheet" href="/css/online.css"><script src="/js/online-admin.js" defer></script></head>
+<body><main class="shell"><header class="masthead"><h1>好友房运行看板</h1><a href="/online.html">返回好友房</a></header>
+<p class="notice" id="admin-message" role="status">默认未启用管理接口；仅在服务器明确配置管理密钥后可使用。</p>
+<form class="panel" id="admin-form"><label for="admin-token">管理密钥（仅存于此页内存，不写入浏览器存储）</label><input type="password" id="admin-token" autocomplete="off" required minlength="24"><button>查看运行状态</button></form>
+<section class="panel" id="admin-results" hidden><h2>运行指标</h2><pre id="admin-metrics"></pre><h2>房间</h2><div id="admin-rooms"></div><h2>最近事件</h2><pre id="admin-events"></pre><p class="muted">看板不显示任何手牌、会话凭证或邀请链接。累计指标不是付费转化或留存结论。</p></section></main></body></html>

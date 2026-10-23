@@ -11,6 +11,8 @@ data/
 models/
 results/
 vendor/
+!js/vendor/
+!js/vendor/qrcodegen.js
 *.pt
 *.npz
 *.pyc
@@ -21,6 +23,8 @@ tools/*
 !tools/build_release.js
 !tools/verify_release.js
 !tools/test_release_worker_deadline.js
+!tools/build_online_release.js
+!tools/verify_online_release.js
 
 # 策略候选和中间导出，不是网页运行时
 js/ai-policy-v*.js

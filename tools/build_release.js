@@ -57,6 +57,11 @@ if (!output.startsWith(`${distRoot}${path.sep}`)) {
 if (outputFlag >= 0 && !process.argv[outputFlag + 1]) fail('--output 缺少目录参数');
 fs.rmSync(output, { recursive: true, force: true });
 for (const relative of files) copy(relative);
+// The standalone distribution intentionally excludes the online server.
+const offlinePackagePath = path.join(output, 'package.json');
+const offlinePackage = JSON.parse(fs.readFileSync(offlinePackagePath, 'utf8'));
+for (const command of Object.keys(offlinePackage.scripts)) if (command.includes('online')) delete offlinePackage.scripts[command];
+fs.writeFileSync(offlinePackagePath, JSON.stringify(offlinePackage, null, 2) + '\n');
 fs.renameSync(path.join(output, 'RELEASE_README.md'), path.join(output, 'README.md'));
 
 const manifestFiles = files
