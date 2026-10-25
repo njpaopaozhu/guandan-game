@@ -9,7 +9,7 @@ for(const [file,hash]of Object.entries(manifest.files)){
 }
 for(const file of ['server/index.js','online.html','README.md','tests/online.test.js','tests/online-client.test.js','js/vendor/qrcodegen.js'])assert(Object.hasOwn(manifest.files,file));
 assert.equal(manifest.files['js/vendor/qrcodegen.js'],'2511bc17f40a3c41d4a0578995db956b38997334d3d20113a5d4dc5c49c69480');
-for(const args of [['test_node.js'],['--test','tests/online.test.js','tests/online-client.test.js']]){
+for(const args of [['test_node.js'],['tools/test_release_worker_deadline.js'],['--test','tests/online.test.js','tests/online-client.test.js']]){
     const test=spawnSync(process.execPath,args,{encoding:'utf8',cwd:directory});
     process.stdout.write(test.stdout||'');process.stderr.write(test.stderr||'');assert.equal(test.status,0,'发布包自检失败');
 }

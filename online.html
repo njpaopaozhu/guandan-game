@@ -10,19 +10,21 @@
 <main class="shell">
     <header class="masthead"><div><p class="eyebrow">GUANDAN · 好友一起玩</p><h1>掼蛋好友房</h1></div>
         <div class="header-tools"><span id="connection" class="pill">正在连接</span><a href="/index.html">单机练习</a></div></header>
-    <p id="message" class="notice" role="status" aria-live="polite">本地私房内测 · 无充值、无筹码交易 · AI不读取其他座位暗牌</p>
+    <p id="message" class="notice" role="status" aria-live="polite">创建房间，邀请朋友，准备后开局。当前为本机内测版。</p>
     <section id="welcome" class="entry-grid">
         <div class="panel"><p class="eyebrow">01 / 入席</p><h2>先起个牌桌昵称</h2>
             <form id="nickname-form"><label for="nickname">昵称</label><input id="nickname" maxlength="16" autocomplete="nickname" placeholder="最多16个字" required>
-                <button type="submit">进入好友大厅</button></form><p class="muted">无需注册。身份保存在当前浏览器的安全会话中；请勿清除浏览器数据，以免失去原座位。</p></div>
+                <button type="submit">进入好友大厅</button></form><p class="muted">无需注册，使用同一浏览器可回到原座位。清除浏览器数据可能丢失身份。</p></div>
         <div class="panel intro"><h2>把熟悉的人，约到同一张牌桌</h2><p>两副牌，四个座位。复制邀请即可约局，缺少的位置由 AI 补齐。</p>
             <ul><li>支持2–4位真人，AI席位明确标注</li><li>断线保留座位，超时托管后可接回</li><li>服务器判牌，每人只收到自己的手牌</li></ul></div>
     </section>
     <section id="lobby" class="panel" hidden><div class="section-heading"><div><p class="eyebrow">02 / 约局</p><h2 id="hello">好友大厅</h2></div><span class="pill">私房内测</span></div>
         <div class="lobby-actions"><button id="create-room">创建好友房</button><form id="join-form"><label for="room-code">输入8位房间号</label><div class="inline"><input id="room-code" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" placeholder="8位房间号" required><button type="submit" class="secondary">加入房间</button></div></form></div>
         <p class="muted">有邀请链接？用同一个联机服务地址打开即可。房间号请只分享给朋友。</p>
-        <label class="consent-row"><input type="checkbox" id="consent-training">允许将我的公开行动用于后续AI训练（可随时撤回）</label>
-        <p class="muted">默认关闭。本内测版仅记录授权选项，不自动导出训练数据；私人牌局不因单人授权而整局公开。</p>
+        <details class="privacy-options"><summary>隐私与数据设置</summary>
+            <label class="consent-row"><input type="checkbox" id="consent-training">允许用我的公开出牌改进电脑对手（可随时撤回）</label>
+            <p class="muted">默认关闭。当前版本仅保存授权选择，不自动导出牌局；个人授权不会让整场私人牌局公开。</p>
+        </details>
     </section>
     <section id="room" hidden>
         <div class="room-toolbar panel"><div><p class="eyebrow">ROOM / <span id="room-number"></span></p><strong id="room-status">等待朋友入座</strong></div>
@@ -40,7 +42,7 @@
         </section>
         <section class="panel history"><h2>本场记录</h2><div id="history">比赛开始后显示每副结算，不公开其他玩家的剩余手牌。</div></section>
     </section>
-    <footer>好友房内测版 · 未设置公开排位或付费权益 · 请勿分享个人隐私或将房间用于金钱输赢</footer>
+    <footer>好友房本机内测 · 不涉及金钱输赢 · 房间邀请请只分享给朋友</footer>
 </main>
 <dialog id="invite-dialog"><div class="section-heading"><h2>邀请朋友入座</h2><button id="close-invite" class="quiet">关闭</button></div>
     <p>分享链接或二维码。二维码由本机生成，不发送给第三方服务。</p><canvas id="invite-qr" width="240" height="240" aria-label="房间邀请二维码"></canvas>

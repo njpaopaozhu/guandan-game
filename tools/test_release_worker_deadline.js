@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** 验证主线程在超时后终止Worker并返回已校验的快速动作。 */
+/** 验证已发布后台策略的主线程硬截止、页面取消与合法快速回退。 */
 const assert = require('assert/strict');
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +12,37 @@ for (const relative of ['js/cards.js', 'js/engine.js', 'js/ai-policy-weights.js'
     'js/v5-decision-transport.js', 'js/v5-worker-client.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, relative), 'utf8'), context, { filename: relative });
 }
+const controller = vm.createContext({ console, setTimeout, clearTimeout, performance, window: {},
+    document: { getElementById: () => ({ setAttribute() {}, classList: { add() {}, remove() {} } }) } });
+for (const relative of ['js/cards.js', 'js/engine.js', 'js/ai-policy-weights.js', 'js/ai-policy.js', 'js/ai.js',
+    'js/v5-decision-transport.js', 'js/v5-worker-client.js', 'js/game.js']) {
+    vm.runInContext(fs.readFileSync(path.join(root, relative), 'utf8'), controller, { filename: relative });
+}
+const lifecycle = vm.runInContext(`(async () => {
+    let terminated = 0;
+    globalThis.Worker = function () { return { postMessage() {}, terminate() { terminated++; } }; };
+    let seed = 280539899; Math.random = () => { seed = (Math.imul(seed,1664525)+1013904223) >>> 0; return seed/4294967296; };
+    engine.startRound(); deepThinkingEnabled = true; engine.aiStrategyMode = 'v5-rollout-lead';
+    const serial = aiDecisionSerial, deciding = decideBuiltinAI(0, engine);
+    toggleDeepThinking();
+    const fallback = await deciding;
+    if (deepThinkingClient !== null || deepThinkingEnabled || engine.aiStrategyMode !== 'v3'
+        || terminated !== 1 || aiDecisionSerial !== serial) throw Error('关闭深度思考未取消后台，或错误丢弃当前回合');
+    if (!fallback?.length || !fallback.every(c => engine.hands[0].some(own => own.id === c.id))
+        || !identifyHand(fallback,engine.levelCard).valid) throw Error('取消后台后未返回合法快速动作');
+    deepThinkingEnabled = true; engine.aiStrategyMode = 'v5-rollout-lead';
+    const packet = encodePublicDecision(engine,0);
+    deepThinkingClient = new V5PublicWorkerClient(() => new Worker());
+    const pending = deepThinkingClient.request(packet,700,[engine.hands[0][0].id]);
+    engine.state = 'finished';
+    showRoundEndModal({description:'synthetic end',levelBefore:'2',levelAfter:'2',finishOrder:[0,1,2,3]});
+    const ended = await pending;
+    if (deepThinkingClient !== null || terminated !== 2 || ended.status !== 'disposed' || ended.action !== null)
+        throw Error('回合结算未取消后台或仍可提交旧动作');
+    return { terminated, validFastFallback: true, serialPreserved: true, endedStatus: ended.status };
+})()`, controller);
+lifecycle.then(() => console.log('Worker页面生命周期通过：关闭立即取消、快速回退继续、结算丢弃旧动作'))
+    .catch(error => { console.error(error); process.exitCode = 1; });
 const result = vm.runInContext(`(async () => {
     const engine = new GameEngine();
     engine.startRound();

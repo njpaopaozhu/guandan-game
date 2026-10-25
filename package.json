@@ -4,7 +4,7 @@
   "private": true,
   "description": "本地单机掼蛋游戏：完整规则、内置AI与可验证发布包",
   "scripts": {
-    "test": "node test_node.js",
+    "test": "node test_node.js && node tools/test_release_worker_deadline.js",
     "start:online": "node server/index.js",
     "test:online": "node --test tests/online.test.js tests/online-client.test.js",
     "test:online:load": "node --test tests/online-load.test.js",

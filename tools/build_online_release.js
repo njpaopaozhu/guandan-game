@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..'),dist=path.join(root,'dist'),index=proces
 const output=path.resolve(root,index>=0?process.argv[index+1]||'':'dist/guandan-online-alpha');
 if(!output.startsWith(dist+path.sep)||output===dist)throw Error('联机发布目录必须在dist内');
 if(fs.existsSync(output))throw Error('拒绝覆盖已有发布目录或其中的玩家数据，请使用新的 --output 目录');
-const files=['online.html','admin.html','index.html','package.json','ONLINE_README.md','test_node.js',
+const files=['online.html','admin.html','index.html','package.json','ONLINE_README.md','test_node.js','tools/test_release_worker_deadline.js',
     'css/online.css','css/style.css','js/online.js','js/online-admin.js','js/invite-qr.js','js/vendor/qrcodegen.js',
     'js/cards.js','js/engine.js','js/ai-policy-weights.js','js/ai-policy.js','js/human-profile.js','js/ai.js',
     'js/pro-ai-bridge.js','js/strategy-storage.js','js/v5-decision-transport.js','js/v5-worker-client.js','js/v5-rollout-worker.js','js/game.js',
@@ -13,7 +13,7 @@ const files=['online.html','admin.html','index.html','package.json','ONLINE_READ
 for(const relative of files){const target=path.join(output,relative);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join(root,relative),target);}
 fs.renameSync(path.join(output,'ONLINE_README.md'),path.join(output,'README.md'));
 const pkg=require(path.join(output,'package.json'));pkg.name='guandan-private-online';pkg.version='3.2.0-online-alpha';
-pkg.scripts={start:'node server/index.js','start:online':'node server/index.js',test:'node test_node.js',
+pkg.scripts={start:'node server/index.js','start:online':'node server/index.js',test:pkg.scripts.test,
     'test:online':'node --test tests/online.test.js tests/online-client.test.js','test:online:load':'node --test tests/online-load.test.js'};
 fs.writeFileSync(path.join(output,'package.json'),JSON.stringify(pkg,null,2)+'\n');
 const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');

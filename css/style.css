@@ -5,6 +5,7 @@
 
 /* ===== 基础重置 ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
     font-family: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', sans-serif;
@@ -44,6 +45,8 @@ body {
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     letter-spacing: 4px;
 }
+.brand { text-align: left; }
+.brand p { margin-top: 4px; color: #bdd2c5; font-size: 12px; letter-spacing: 1px; }
 
 .game-info {
     display: flex;
@@ -74,6 +77,7 @@ body {
     justify-content: center;
     gap: 10px;
     margin-bottom: 0;
+    flex-wrap: wrap;
 }
 
 .toolbar-btn {
@@ -85,6 +89,7 @@ body {
     font-size: 12px;
     cursor: pointer;
     transition: all 0.3s;
+    min-height: 44px;
 }
 
 .toolbar-btn:hover {
@@ -111,12 +116,12 @@ body {
     grid-template-areas:
         ". top ."
         "left center right"
-        ". bottom .";
+        "bottom bottom bottom";
     grid-template-columns: 180px 1fr 180px;
-    grid-template-rows: 82px 1fr 175px;
+    grid-template-rows: 88px minmax(230px, 1fr) auto;
     gap: 15px;
     margin-bottom: 15px;
-    height: 560px;
+    min-height: 560px;
     padding: 15px;
     background: radial-gradient(ellipse at center, rgba(0,100,50,0.3) 0%, rgba(0,0,0,0.2) 100%);
     border-radius: 20px;
@@ -193,6 +198,7 @@ body {
 .player-bottom { 
     grid-area: bottom; 
     padding: 15px 10px;
+    overflow: visible;
 }
 
 /* 底部玩家（自己）：最多27张按14列自动换行，整手牌无需横向滚动。 */
@@ -266,6 +272,7 @@ body {
 
 .player-top .cards-row { flex-wrap: nowrap; overflow: hidden; }
 .player-top .card + .card { margin-left: -16px; }
+.player-left .card, .player-right .card { width: 24px; height: 28px; }
 
 /* ===== 中央出牌区 ===== */
 .center-area {
@@ -312,6 +319,15 @@ body {
 .play-info .player-name-text {
     color: #ffd700;
 }
+.table-welcome { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; }
+.table-welcome h2 { font-size: 28px; color: #fff3c7; }
+.table-welcome p { color: #c9dfd1; line-height: 1.6; }
+.table-welcome .welcome-mark { color: #dfc46a; font-size: 24px; letter-spacing: 10px; }
+.table-welcome .welcome-tip { font-size: 12px; }
+.table-area.is-idle { display: flex; min-height: 380px; padding: 24px; }
+.table-area.is-idle .player { display: none; }
+.table-area.is-idle .center-area { width: 100%; min-height: 330px; }
+.turn-guide { font-size: 15px; color: #fff0af; text-align: center; margin-bottom: 12px; }
 
 /* ===== 卡牌样式 ===== */
 .cards-row {
@@ -471,6 +487,10 @@ body {
     flex-wrap: wrap;
     margin-top: 10px;
     padding-bottom: 10px;
+    padding: 12px;
+    background: rgba(3, 30, 18, .55);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px;
 }
 
 .btn {
@@ -484,6 +504,8 @@ body {
     letter-spacing: 1px;
     position: relative;
     overflow: hidden;
+    min-height: 44px;
+    text-decoration: none;
 }
 
 .btn::after {
@@ -706,6 +728,14 @@ body {
 
 .return-card-option.red { color: #d32f2f; }
 .return-card-option.black { color: #111; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 14px 0; }
+.setting-row p { color: #b7cdbf; font-size: 13px; }
+.setting-row button { flex-shrink: 0; }
+.settings-advanced { border-top: 1px solid #456351; border-bottom: 1px solid #456351; padding: 14px 0; margin: 8px 0 18px; }
+.settings-advanced summary { cursor: pointer; padding: 6px 0; color: #d0dfd4; }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+#pro-ai-modal label { display: block; margin: 14px 0; color: #d0dfd4; }
+#pro-ai-modal input:not([type=checkbox]) { width: 100%; margin-top: 5px; padding: 10px; border-radius: 6px; border: 1px solid #6a8c76; }
 
 /* ===== 响应式适配 ===== */
 @media (max-width: 900px) {
@@ -716,7 +746,7 @@ body {
             "left center right"
             "bottom bottom bottom";
         grid-template-columns: 110px 1fr 110px;
-        grid-template-rows: 72px 220px 165px;
+        grid-template-rows: 82px minmax(220px, 1fr) auto;
         height: auto;
         min-height: 485px;
         gap: 8px;
@@ -740,14 +770,14 @@ body {
 
     .player-left .cards-row,
     .player-right .cards-row {
-        grid-template-columns: repeat(5, 22px);
-        grid-auto-rows: 25px;
+        grid-template-columns: repeat(4, 18px);
+        grid-auto-rows: 23px;
     }
 
     .player-left .card,
     .player-right .card {
-        width: 22px;
-        height: 25px;
+        width: 18px;
+        height: 23px;
     }
 
     .card { width: 40px; height: 58px; }
@@ -761,7 +791,7 @@ body {
 
 @media (max-width: 600px) {
     .table-area {
-        grid-template-rows: 64px 180px 220px;
+        grid-template-rows: 76px minmax(190px, 1fr) auto;
     }
 
     .player-bottom .cards-row {
@@ -781,7 +811,7 @@ body {
 
     .table-area {
         grid-template-columns: 66px minmax(0, 1fr) 66px;
-        grid-template-rows: 64px 180px 270px;
+        grid-template-rows: 64px minmax(190px, 1fr) auto;
         padding: 6px;
     }
     .player-left .cards-row,
@@ -791,14 +821,17 @@ body {
     .card-count { padding: 1px 4px; font-size: 9px; }
     
     .player-bottom .cards-row {
-        grid-template-columns: repeat(7, 40px);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         grid-auto-rows: 58px;
         min-height: 237px;
         gap: 3px 2px;
+        width: 100%;
+        max-width: 292px;
+        margin-inline: auto;
     }
 
     .player-bottom .card {
-        width: 40px;
+        width: 100%;
         height: 58px;
     }
     
@@ -817,6 +850,22 @@ body {
     .controls { gap: 6px; }
     .player { padding: 8px; }
     .center-area { min-height: 140px; padding: 10px; }
+    .brand { text-align: center; }
+    .toolbar { gap: 6px; }
+    .toolbar-btn { padding: 6px 10px; }
+    .table-welcome h2 { font-size: 21px; }
+    .table-welcome p { font-size: 12px; }
+    .table-welcome .welcome-mark { font-size: 18px; letter-spacing: 3px; }
+    .turn-guide { font-size: 12px; }
+    .setting-row { align-items: flex-start; flex-direction: column; gap: 8px; }
+    .table-area.is-playing { grid-template-rows: 64px minmax(130px, 1fr) auto; min-height: 0; }
+    .table-area.is-idle { padding: 12px; min-height: 340px; }
+    .controls { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); padding: 8px; }
+    .controls .btn { grid-column: span 2; padding: 8px; }
+    .controls #btn-sort, .controls #btn-clear { grid-column: span 3; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
 /* ===== 滚动条美化 ===== */

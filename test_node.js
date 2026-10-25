@@ -1322,7 +1322,7 @@ const tributeText = formatTributeExchanges([{
     tributeCard: normalCard('A', '♠', 'format-tribute'),
     returnCard: normalCard('10', '♥', 'format-return')
 }]);
-assert(tributeText.includes('玩家3进贡♠A') && tributeText.includes('你还牌♥10'), '升级后贡还牌提示函数存在且可正常输出');
+assert(tributeText.includes('右侧对手进贡♠A') && tributeText.includes('你还牌♥10'), '升级后贡还牌提示正确显示座位、贡牌与还牌');
 
 // 同一牌型必须覆盖不同实物牌选择，否则“先取数组第一张”会拆掉潜在同花顺。
 const protectedFlushCards = ['3', '4', '5', '6', '7']
@@ -1618,10 +1618,21 @@ const originalStorage = global.localStorage;
 vm.runInThisContext(`
     globalThis.__historyRaw = null;
     globalThis.__historyModalOpened = false;
+    globalThis.__historyModalFocused = false;
+    globalThis.__historyTriggerFocused = false;
     globalThis.__historyContent = { innerHTML: '' };
+    globalThis.__historyModalNode = {
+        querySelector: selector => selector === '.modal' ? { scrollTop: 25 }
+            : { focus: () => { globalThis.__historyModalFocused = true; } },
+        classList: {
+            add: name => { if (name === 'show') globalThis.__historyModalOpened = true; },
+            remove: name => { if (name === 'show') globalThis.__historyModalOpened = false; }
+        }
+    };
     globalThis.document = {
+        activeElement: { isConnected: true, focus: () => { globalThis.__historyTriggerFocused = true; } },
         getElementById: (id) => id === 'history-modal'
-            ? { querySelector: () => ({ scrollTop: 25 }), classList: { add: (name) => { if (name === 'show') globalThis.__historyModalOpened = true; } } }
+            ? globalThis.__historyModalNode
             : (id === 'history-content' ? globalThis.__historyContent : null)
     };
     globalThis.localStorage = {
@@ -1650,6 +1661,9 @@ assert(global.__historyModalOpened && global.__historyContent.innerHTML.includes
 assert(global.__historyContent.innerHTML.includes('&lt;img src=x onerror=alert(1)&gt;')
     && !global.__historyContent.innerHTML.includes('<img src=x onerror=alert(1)>'),
     '历史记录中的文本会转义，损坏或恶意缓存不能插入页面');
+assert(global.__historyModalFocused, '打开历史弹窗时键盘焦点进入弹窗');
+vm.runInThisContext("closeModal('history-modal');", { filename: 'history-modal-test.js' });
+assert(!global.__historyModalOpened && global.__historyTriggerFocused, '关闭历史弹窗后键盘焦点回到原入口');
 vm.runInThisContext('globalThis.__historyRaw = "{bad json"; showHistoryModal();', { filename: 'history-modal-test.js' });
 assert(global.__historyContent.innerHTML.includes('本局记录仍可查看')
     && global.__historyContent.innerHTML.includes('第2局'),
@@ -1665,6 +1679,9 @@ vm.runInThisContext(`
     delete globalThis.__historyRaw;
     delete globalThis.__historyModalOpened;
     delete globalThis.__historyContent;
+    delete globalThis.__historyModalNode;
+    delete globalThis.__historyModalFocused;
+    delete globalThis.__historyTriggerFocused;
 `, { filename: 'history-modal-test.js' });
 global.document = originalDocument;
 if (originalStorage === undefined) delete global.localStorage;

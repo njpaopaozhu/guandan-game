@@ -56,7 +56,8 @@
         const container = $(id), seat = state.seats[index]; container.replaceChildren();
         container.classList.toggle('active', state.status === 'playing' && (state.state === 'tribute' ? state.returnFor === index : state.currentPlayer === index && state.state === 'playing'));
         const title = document.createElement('strong'); title.textContent = seat.name + (seat.you ? '（我）' : '') + (seat.owner ? ' · 房主' : '');
-        const detail = document.createElement('small'); detail.textContent = seat.team + '队 · ' + (seat.occupied ? state.status === 'waiting' ? seat.ready ? '已准备' : seat.human ? '未准备' : 'AI补位' : seat.finished ? '已出完' : seat.count + '张' : '空位');
+        const relation = seat.you ? '我方' : index === (state.you + 2) % 4 ? '我的队友' : '对方';
+        const detail = document.createElement('small'); detail.textContent = relation + ' · ' + (seat.occupied ? state.status === 'waiting' ? seat.ready ? '已准备' : seat.human ? '未准备' : '电脑补位' : seat.finished ? '已出完' : seat.count + '张' : '空位');
         const status = document.createElement('small'); status.textContent = seat.human ? (!seat.connected ? '已离线 · 保留座位' : seat.auto ? 'AI托管中' : '真人在线') : seat.occupied ? 'AI玩家' : '开局后可由AI补齐';
         container.append(title, detail, status);
         if (!seat.human && state.status === 'waiting' && !state.seats[state.you].ready) {
@@ -72,12 +73,13 @@
         $('consent-training').disabled = busy || replaced;
         if (!state) return;
         const me = state.seats[state.you], owner = me.owner, waiting = state.status === 'waiting', finished = state.state === 'finished';
+        $('room').classList.toggle('is-waiting', waiting);
         const manual = !me.auto && state.status === 'playing', turn = manual && state.state === 'playing' && state.currentPlayer === state.you;
         const returning = manual && state.state === 'tribute' && state.returnFor === state.you;
         $('room-number').textContent = state.code;
-        $('room-status').textContent = waiting ? '等待朋友入座 · 对家同队' : state.status === 'paused' ? '房间暂停，重新连接后继续' : state.matchOver ? '本场已结束' : '比赛进行中';
-        $('grade').textContent = '级牌 ' + state.levelCard; $('team-a').textContent = 'A队 · ' + grades[state.teamLevel.a];
-        $('team-b').textContent = 'B队 · ' + grades[state.teamLevel.b]; $('round-number').textContent = '第' + (finished ? Math.max(1, state.roundNumber - 1) : state.roundNumber) + '副';
+        $('room-status').textContent = waiting ? state.seats.filter(s=>s.human&&s.occupied).length < 2 ? '邀请一位朋友，就能开局' : '请大家点准备，再由房主开局' : state.status === 'paused' ? '房间暂停，重新连接后继续' : state.matchOver ? '本场已结束' : '比赛进行中';
+        $('grade').textContent = '级牌 ' + state.levelCard; $('team-a').textContent = (me.team === 'A' ? '我方' : '对方') + '（A队）· ' + grades[state.teamLevel.a];
+        $('team-b').textContent = (me.team === 'B' ? '我方' : '对方') + '（B队）· ' + grades[state.teamLevel.b]; $('round-number').textContent = '第' + (finished ? Math.max(1, state.roundNumber - 1) : state.roundNumber) + '副';
         renderSeat('seat-bottom', state.you); renderSeat('seat-top', (state.you + 2) % 4);
         renderSeat('seat-left', (state.you + 1) % 4); renderSeat('seat-right', (state.you + 3) % 4);
         $('turn-label').textContent = waiting ? '准备好后由房主开局' : finished ? state.history.at(-1)?.result.description || '本副结束' : state.state === 'tribute' ? state.seats[state.returnFor]?.name + ' 选择一张不高于10的牌还牌' : state.seats[state.currentPlayer]?.name + ' 的回合';

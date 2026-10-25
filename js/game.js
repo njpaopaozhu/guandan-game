@@ -12,6 +12,7 @@ let deepThinkingEnabled = false;
 const DEEP_THINKING_BUDGET_MS = 700;
 let deepThinkingClient = null;
 let aiDecisionSerial = 0;
+const PLAYER_LABELS = ['你', '左侧对手', '你的队友', '右侧对手'];
 const HUMAN_STRATEGY_LOG_KEY = 'guandanHumanStrategyLogV1';
 const HUMAN_STRATEGY_LOG_LIMIT = 4000;
 let humanStrategyEntries = null;
@@ -262,6 +263,23 @@ function initGame() {
 function setupEventListeners() {
     // 键盘快捷键
     document.addEventListener('keydown', (e) => {
+        const modal = Array.from(document.querySelectorAll('.modal-overlay.show')).at(-1);
+        if (modal) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (!['round-end-modal', 'game-over-modal'].includes(modal.id)) closeModal(modal.id);
+            }
+            if (e.key === 'Tab') {
+                const focusable = Array.from(modal.querySelectorAll('button:not(:disabled), input, summary, a[href]'))
+                    .filter(node => node.getClientRects().length);
+                const first = focusable[0], last = focusable.at(-1);
+                if (first && e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (last && !e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+            }
+            return;
+        }
+        if (e.defaultPrevented || e.repeat || e.ctrlKey || e.altKey || e.metaKey
+            || e.target.closest?.('input, textarea, select, button, a, summary, [contenteditable="true"]')) return;
         if (e.key === 'Enter') {
             if (engine.state === 'playing' && engine.currentPlayer === 0) {
                 playSelectedCards();
@@ -282,6 +300,33 @@ function setupEventListeners() {
 function showWelcomeScreen() {
     updateUI();
     showMessage('点击"开始游戏"发牌');
+}
+
+function openGameModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.returnFocus = document.activeElement;
+    modal.classList.add('show');
+    modal.querySelector('button:not(:disabled), input, summary, a:not([hidden])')?.focus();
+}
+
+async function showFriendRoom() {
+    openGameModal('friend-room-modal');
+    const message = document.getElementById('friend-room-message');
+    const link = document.getElementById('friend-room-link');
+    link.hidden = true;
+    message.textContent = '当前为单机练习。好友房需从已启动的联机版进入；本机地址不能直接邀请外地朋友。';
+    if (!['http:', 'https:'].includes(location.protocol)) return;
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 1500);
+    try {
+        const response = await fetch('/api/health', { signal: controller.signal });
+        const health = response.ok ? await response.json() : null;
+        if (health?.status === 'ok' && health.mode === 'private-room-preview') {
+            message.textContent = '好友房已就绪。创建房间后，可复制邀请链接或二维码。同一台设备上的本机地址仅供本机测试。';
+            link.hidden = false;
+        }
+    } catch (_error) { /* 单机页面仍可正常使用。 */ }
+    finally { clearTimeout(timer); }
 }
 
 // ==================== 游戏流程控制 ====================
@@ -395,7 +440,7 @@ function startNextRound() {
 function showTributeResultModal(roundResult) {
     const modal = document.getElementById('round-end-modal');
     const content = document.getElementById('round-end-content');
-    const names = ['你', '玩家1', '玩家2', '玩家3'];
+    const names = PLAYER_LABELS;
     let html = `<h2>第${engine.roundNumber}局贡还牌</h2><div class="result-info">`;
 
     const pendingReturn = engine.pendingPlayerReturns[0];
@@ -473,13 +518,14 @@ function continueCurrentRound() {
  */
 function toggleDeepThinking() {
     deepThinkingEnabled = !deepThinkingEnabled;
+    if (!deepThinkingEnabled) cancelDeepThinking();
     engine.aiStrategyMode = deepThinkingEnabled ? 'v5-rollout-lead' : 'v3';
     const button = document.getElementById('btn-deep-thinking');
     if (button) {
-        button.textContent = `🧠 深度思考：${deepThinkingEnabled ? '开' : '关'}`;
+        button.textContent = `电脑思考：${deepThinkingEnabled ? '仔细' : '快速'}`;
         button.setAttribute('aria-pressed', String(deepThinkingEnabled));
     }
-    showMessage(deepThinkingEnabled ? '已开启深度思考，AI会比较可能的后续牌局' : '已切换快速模式，保留小牌清理和队友配合');
+    showMessage(deepThinkingEnabled ? '电脑已切换为仔细思考' : '电脑已切换为快速思考');
 }
 
 /** AI出牌。 */
@@ -503,8 +549,8 @@ async function aiPlay() {
         const result = engine.playCards(playerId, cards);
         if (result.success) {
             const handType = result.handType;
-            showPlayedCards(cards, handType, `玩家${playerId}`);
-            showMessage(`玩家${playerId}出了${handType.type}`);
+            showPlayedCards(cards, handType, PLAYER_LABELS[playerId]);
+            showMessage(`${PLAYER_LABELS[playerId]}出了${handType.type}`);
             
             if (result.playerFinished) {
                 showFinishMessage(playerId);
@@ -525,7 +571,7 @@ async function aiPlay() {
             // AI搜索结果即使出现边界情况，也不能让整个回合停住。
             const passResult = engine.passCards(playerId);
             if (passResult.success) {
-                showMessage(`玩家${playerId}过牌`);
+                showMessage(`${PLAYER_LABELS[playerId]}选择不出`);
                 updateUI();
                 if (engine.currentPlayer !== 0) setTimeout(() => aiPlay(), 800);
             }
@@ -534,7 +580,7 @@ async function aiPlay() {
         // 过牌
         const result = engine.passCards(playerId);
         if (result.success) {
-            showMessage(`玩家${playerId}过牌`);
+            showMessage(`${PLAYER_LABELS[playerId]}选择不出`);
             updateUI();
             
             if (result.type === 'roundEnd') {
@@ -784,7 +830,11 @@ function renderPlayerCards(containerId, hand, showFace, playerId) {
  * 创建卡牌元素
  */
 function createCardElement(card, playerId) {
-    const cardEl = document.createElement('div');
+    const cardEl = document.createElement('button');
+    cardEl.type = 'button';
+    cardEl.disabled = playerId !== 0 || engine.state !== 'playing' || engine.currentPlayer !== 0;
+    cardEl.setAttribute('aria-label', `${card.suit}${card.rank}${card.suit === '♥' && card.rank === engine.levelCard ? '，逢人配' : ''}`);
+    cardEl.setAttribute('aria-pressed', String(selectedCards.some(c => c.id === card.id)));
     cardEl.className = 'card';
     
     if (card.isJoker) {
@@ -831,10 +881,12 @@ function toggleCardSelection(card, element) {
         // 选中
         selectedCards.push(card);
         element.classList.add('selected');
+        element.setAttribute('aria-pressed', 'true');
     } else {
         // 取消选中
         selectedCards.splice(idx, 1);
         element.classList.remove('selected');
+        element.setAttribute('aria-pressed', 'false');
     }
     
     // 显示选中牌型
@@ -857,10 +909,12 @@ function updateHandTypeHint() {
     const handType = identifyHand(selectedCards, engine.levelCard);
     
     if (handType.valid) {
-        hintEl.textContent = `选中: ${handType.type}`;
+        hintEl.textContent = engine.lastPlay && engine.lastPlayer !== 0 && !canBeat(handType, engine.lastPlayType)
+            ? '这手牌压不过上一手，请换牌或点“不出”'
+            : `已选 ${selectedCards.length} 张 · ${handType.type}`;
         hintEl.style.color = '#00ff88';
     } else {
-        hintEl.textContent = '选中: 无效牌型';
+        hintEl.textContent = '所选牌暂不成牌型，可以点“提示”帮你选牌';
         hintEl.style.color = '#ff6b6b';
     }
 }
@@ -875,11 +929,27 @@ function updateButtons() {
     
     const startButton = document.getElementById('btn-start');
     const roundInProgress = engine.state === 'playing' || engine.state === 'tribute';
+    const table = document.getElementById('game-table');
+    if (table) { table.classList.toggle('is-idle', !roundInProgress); table.classList.toggle('is-playing', roundInProgress); }
+    const controls = document.getElementById('play-controls');
+    if (controls) controls.hidden = !roundInProgress;
+    const info = document.getElementById('game-info');
+    if (info) info.hidden = !roundInProgress && engine.history.length === 0;
+    const welcome = document.getElementById('table-welcome');
+    if (welcome) welcome.hidden = roundInProgress;
+    const guide = document.getElementById('turn-guide');
+    if (guide) {
+        guide.hidden = !roundInProgress;
+        guide.textContent = engine.state === 'tribute' ? '先完成贡还牌，再开始出牌'
+            : isMyTurn ? (hasLastPlay ? '轮到你了 · 跟牌或选择不出' : '轮到你先出 · 选牌后点出牌')
+            : `${PLAYER_LABELS[engine.currentPlayer]}正在思考…`;
+    }
     startButton.disabled = roundInProgress;
     startButton.textContent = roundInProgress
         ? '游戏进行中'
         : engine.history.length > 0 ? '重新开始' : '开始游戏';
-    document.getElementById('btn-play').disabled = !isMyTurn || !selectedType.valid;
+    document.getElementById('btn-play').disabled = !isMyTurn || !selectedType.valid
+        || (hasLastPlay && !canBeat(selectedType, engine.lastPlayType));
     document.getElementById('btn-pass').disabled = !isMyTurn || !hasLastPlay;
     document.getElementById('btn-recommend').disabled = !isMyTurn;
     document.getElementById('btn-clear').disabled = !isMyTurn || selectedCards.length === 0;
@@ -939,7 +1009,7 @@ function resetTableDisplay() {
 function formatTributeExchanges(exchanges) {
     if (!Array.isArray(exchanges) || exchanges.length === 0) return '';
 
-    const names = ['你', '玩家1', '玩家2', '玩家3'];
+    const names = PLAYER_LABELS;
     return exchanges.map(exchange => {
         if (!exchange || !exchange.tributeCard || !exchange.returnCard) return '';
         const tributeCard = `${exchange.tributeCard.suit}${exchange.tributeCard.rank}`;
@@ -962,7 +1032,7 @@ function showMessage(msg) {
  * 显示出完牌消息
  */
 function showFinishMessage(playerId) {
-    const names = ['你', '玩家1', '玩家2', '玩家3'];
+    const names = PLAYER_LABELS;
     showMessage(`🎉 ${names[playerId]}出完牌了！`);
 }
 
@@ -972,6 +1042,7 @@ function showFinishMessage(playerId) {
  * 显示回合结束弹窗
  */
 function showRoundEndModal(result) {
+    cancelDeepThinking();
     saveCurrentGameHistory();
     if (typeof observeHumanMatchResult === 'function'
         && engine.lastProfileRecordedRound !== engine.roundNumber - 1) {
@@ -993,7 +1064,7 @@ function showRoundEndModal(result) {
     `;
     
     if (result.finishOrder && result.finishOrder.length > 0) {
-        const names = ['你', '玩家1', '玩家2', '玩家3'];
+        const names = PLAYER_LABELS;
         html += '<h3>出牌顺序：</h3><ol>';
         result.finishOrder.forEach(playerId => {
             html += `<li>${names[playerId]}</li>`;
@@ -1003,7 +1074,7 @@ function showRoundEndModal(result) {
     
     // 此时仅确定下一局的贡牌关系；具体牌要等下一局重新发牌后才能产生。
     if (result.tributes && result.tributes.length > 0) {
-        const names = ['你', '玩家1', '玩家2', '玩家3'];
+        const names = PLAYER_LABELS;
         html += '<h3>下一局贡牌安排：</h3>';
         result.tributes.forEach(tribute => {
             const fromName = names[tribute.from];
@@ -1106,7 +1177,7 @@ function showHistoryModal() {
     content.innerHTML = html;
     const modalPanel = modal.querySelector('.modal');
     if (modalPanel) modalPanel.scrollTop = 0;
-    modal.classList.add('show');
+    openGameModal('history-modal');
 }
 
 /**
@@ -1115,7 +1186,7 @@ function showHistoryModal() {
 function showHelpModal() {
     const modal = document.getElementById('help-modal');
     modal.querySelector('.modal').scrollTop = 0;
-    modal.classList.add('show');
+    openGameModal('help-modal');
 }
 
 function showProAISettings() {
@@ -1126,7 +1197,7 @@ function showProAISettings() {
     document.getElementById('pro-ai-timeout').value = settings.timeoutMs;
     const status = proAIStatus.detail || `${proAIStatus.mode}；已使用 ${proAIStatus.uses} 次，回退 ${proAIStatus.fallbacks} 次`;
     document.getElementById('pro-ai-status').textContent = status;
-    document.getElementById('pro-ai-modal').classList.add('show');
+    openGameModal('pro-ai-modal');
 }
 
 function saveProAISettingsFromUI() {
@@ -1147,7 +1218,9 @@ function saveProAISettingsFromUI() {
  * 关闭弹窗
  */
 function closeModal(modalId) {
-    document.getElementById(modalId).classList.remove('show');
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('show');
+    if (modal.returnFocus?.isConnected) modal.returnFocus.focus();
 }
 
 // ==================== 音效控制 ====================
