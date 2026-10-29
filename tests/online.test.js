@@ -171,6 +171,23 @@ test('host transfer and expired invitation do not expose room data', async t => 
     assert.equal((await f.request('/api/rooms/join', { code, invite: oldToken }, third)).status, 404);
 });
 
+test('expired invitation blocks newcomers but an existing player can restore their seat', async t => {
+    const f = await setup(t), { users, code } = await f.table(2);
+    const room = f.app.rooms.rooms.get(code);
+    const invite = (await f.request('/api/rooms/' + code + '/invite', undefined, users[0])).value;
+    const token = new URLSearchParams(new URL(invite.url).hash.slice(1)).get('invite');
+    const beforeVersion = room.version;
+    room.inviteExpiresAt = Date.now() - 1;
+    const newcomer = await f.guest('新牌友');
+    assert.equal((await f.request('/api/rooms/join', { code, invite: token }, newcomer)).status, 404);
+    assert.equal((await f.request('/api/rooms/' + code, undefined, newcomer)).status, 403);
+    const restored = await f.request('/api/rooms/join', { code, invite: token }, users[1]);
+    assert.equal(restored.status, 200);
+    assert.equal(restored.value.state.you, 1);
+    assert.equal(room.seats.filter(seat => seat.uid).length, 2);
+    assert.equal(room.version, beforeVersion);
+});
+
 test('corrupt primary is preserved and good backup survives the recovery write', () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'gd-online-test-'));
     try {
@@ -279,4 +296,19 @@ test('a complete server-authoritative match passes Ace and independently replays
     }
     assert.equal(f.app.store.data.metrics.matchesCompleted,1);
     t.diagnostic(JSON.stringify({fullMatch:true,rounds:room.audit.length,actualActionsReplayed:replayed,tributeReturns:returns,passedAce:true,illegal:0}));
+    const previousMatchId=room.matchId;
+    assert.equal((await f.command(users[1],code,'rematch')).status,409);
+    assert.equal((await f.command(users[0],code,'rematch')).status,200);
+    for(let p=0;p<users.length;p++){
+        const state=(await f.request('/api/rooms/'+code,undefined,users[p])).value.state;
+        assert.equal(state.you,p);
+        assert.equal(state.matchId,room.matchId);
+        assert.notEqual(state.matchId,previousMatchId);
+        assert.equal(state.seats.filter(seat=>seat.human).length,4);
+        assert(state.seats.every(seat=>!seat.ready && !seat.auto));
+    }
+    assert.equal(room.status,'waiting');assert.equal(room.audit.length,0);
+    for(const user of users)assert.equal((await f.command(user,code,'ready',{ready:true})).status,200);
+    assert.equal((await f.command(users[0],code,'start')).status,200);
+    assert.equal(room.status,'playing');assert.equal(room.audit.length,1);
 });

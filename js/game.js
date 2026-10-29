@@ -21,6 +21,10 @@ let humanStrategyStorageBlocked = false;
 let humanStrategyStorageWarning = '';
 const GAME_HISTORY_STORAGE_KEY = 'guandanGameHistoryV1';
 const GAME_HISTORY_LIMIT = 500;
+const REVIEW_POSITIONS_KEY = 'guandanReviewPositionsV1';
+const REVIEW_POSITIONS_LIMIT = 50;
+let pendingReviewPositionId = null;
+let reviewPositionSequence = 0;
 let savedGameHistoryCount = 0;
 let gameHistoryStorageWarning = '';
 let gameHistoryStorageReadable = true;
@@ -164,6 +168,83 @@ function refreshHumanStrategyLog() {
 
 function strategyCardSnapshot(card) {
     return { suit: card.suit, rank: card.rank, isJoker: Boolean(card.isJoker), id: card.id };
+}
+
+// Only explicit player bookmarks use this separate local store. A damaged store
+// is left untouched so it can be recovered rather than replaced silently.
+function readReviewPositions() {
+    if (typeof localStorage === 'undefined') throw new Error('Storage unavailable');
+    const raw = localStorage.getItem(REVIEW_POSITIONS_KEY);
+    const value = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(value)) throw new Error('Invalid bookmarks');
+    return value;
+}
+
+function markReviewPosition() {
+    if (!engine || engine.state !== 'playing' || engine.currentPlayer !== 0) {
+        showMessage('轮到你出牌时可以记录当前局面');
+        return;
+    }
+    pendingReviewPositionId = null;
+    try {
+        const positions = readReviewPositions();
+        const id = `${Date.now()}-${++reviewPositionSequence}-${Math.floor(Math.random() * 0x100000000).toString(36)}`;
+        const snapshot = {
+            schema: 'guandan-review-position-v1', recordedAt: new Date().toISOString(),
+            id,
+            round: engine.roundNumber, levelCard: engine.levelCard,
+            hand: engine.hands[0].map(strategyCardSnapshot),
+            lastPlay: (engine.lastPlay || []).map(strategyCardSnapshot),
+            lastPlayer: engine.lastPlayer,
+            cardCounts: engine.hands.map(hand => hand.length),
+            playedCards: (engine.playedCards || []).map(strategyCardSnapshot),
+            selectedCards: selectedCards.map(strategyCardSnapshot)
+        };
+        localStorage.setItem(REVIEW_POSITIONS_KEY, JSON.stringify(positions.concat(snapshot).slice(-REVIEW_POSITIONS_LIMIT)));
+        pendingReviewPositionId = id;
+        showMessage('局面已保存在本机，可在游戏记录中查看');
+    } catch (_error) {
+        showMessage('局面未保存：本机记录不可用，原有数据未覆盖');
+    }
+}
+
+function completeReviewPosition(action, cards) {
+    const id = pendingReviewPositionId;
+    pendingReviewPositionId = null;
+    if (!id) return;
+    try {
+        const positions = readReviewPositions();
+        const entry = positions.find(item => item && item.id === id && item.schema === 'guandan-review-position-v1');
+        if (!entry) return;
+        entry.action = action;
+        entry.actionCards = cards.map(strategyCardSnapshot);
+        localStorage.setItem(REVIEW_POSITIONS_KEY, JSON.stringify(positions));
+    } catch (_error) {
+        // A failed bookmark update must never prevent an already legal move.
+    }
+}
+
+function formatReviewCards(cards) {
+    if (!Array.isArray(cards)) return '未记录';
+    return cards.map(card => escapeHistoryText(card && typeof card === 'object'
+        ? `${card.suit || ''}${card.rank || ''}` : '')).filter(Boolean).join(' ') || '无';
+}
+
+function deleteReviewPosition(button) {
+    const id = button && button.dataset ? button.dataset.reviewId : '';
+    if (typeof id !== 'string' || !/^\d+-\d+-[a-z0-9]+$/.test(id)) return;
+    try {
+        const positions = readReviewPositions();
+        const index = positions.findIndex(entry => entry && entry.id === id && entry.schema === 'guandan-review-position-v1');
+        if (index < 0) { showHistoryModal(); return; }
+        positions.splice(index, 1);
+        localStorage.setItem(REVIEW_POSITIONS_KEY, JSON.stringify(positions));
+        if (pendingReviewPositionId === id) pendingReviewPositionId = null;
+        showHistoryModal();
+        showMessage('已删除这条本机局面记录');
+    } catch (_error) {
+        showMessage('删除失败，本机记录未覆盖');
+    }
 }
 
 function updateHumanLearningDisplay() {
@@ -377,6 +458,7 @@ async function decideBuiltinAI(playerId, activeEngine) {
  * 开始新游戏
  */
 function startNewGame() {
+    pendingReviewPositionId = null;
     cancelDeepThinking();
     aiDecisionSerial++;
     engine.reset();
@@ -617,7 +699,7 @@ function playSelectedCards() {
         showMessage(result.error);
         return;
     }
-    
+    completeReviewPosition('play', selectedCards);
     const handType = result.handType;
     showPlayedCards(selectedCards, handType, '你');
     showMessage(`你出了${handType.type}`);
@@ -655,7 +737,7 @@ function passTurn() {
         showMessage(result.error);
         return;
     }
-    
+    completeReviewPosition('pass', []);
     showMessage('你选择过牌');
     selectedCards = [];
     updateUI();
@@ -1146,6 +1228,9 @@ function showHistoryModal() {
     const modal = document.getElementById('history-modal');
     const content = document.getElementById('history-content');
     if (!modal || !content) return;
+    const alreadyOpen = modal.classList.contains?.('show') === true;
+    const oldPanel = modal.querySelector('.modal');
+    const previousScroll = oldPanel ? oldPanel.scrollTop : 0;
     const records = getGameHistoryForDisplay();
     
     let html = '<h2>游戏记录</h2>';
@@ -1167,6 +1252,31 @@ function showHistoryModal() {
         html += '</div>';
     }
     if (gameHistoryStorageWarning) html += `<p class="history-note">${escapeHistoryText(gameHistoryStorageWarning)}</p>`;
+    html += '<h3>记录的局面</h3>';
+    try {
+        const positions = readReviewPositions();
+        if (!positions.length) html += '<p>暂无记录的局面</p>';
+        html += '<div class="review-list">';
+        for (const entry of positions.slice(-REVIEW_POSITIONS_LIMIT).reverse()) {
+            if (!entry || entry.schema !== 'guandan-review-position-v1') continue;
+            const counts = Array.isArray(entry.cardCounts) ? entry.cardCounts.map(value =>
+                Number.isInteger(value) && value >= 0 && value <= 27 ? String(value) : '?').join(' / ') : '未记录';
+            const lastPlayer = Number.isInteger(entry.lastPlayer) && entry.lastPlayer >= 0 && entry.lastPlayer < PLAYER_LABELS.length
+                ? PLAYER_LABELS[entry.lastPlayer] : '无';
+            const action = entry.action === 'play' ? `出牌：${formatReviewCards(entry.actionCards)}`
+                : entry.action === 'pass' ? '不出' : '尚未记录后续选择';
+            const remove = typeof entry.id === 'string' && /^\d+-\d+-[a-z0-9]+$/.test(entry.id)
+                ? `<button type="button" class="btn btn-secondary" data-review-id="${escapeHistoryText(entry.id)}" onclick="deleteReviewPosition(this)">删除</button>` : '';
+            html += `<div class="history-item review-position"><span class="history-round">第${escapeHistoryText(entry.round)}局 · 打${escapeHistoryText(entry.levelCard)}</span>`
+                + `<span>手牌：${formatReviewCards(entry.hand)}</span><span>上手（${lastPlayer}）：${formatReviewCards(entry.lastPlay)}</span>`
+                + `<span>已选：${formatReviewCards(entry.selectedCards)}</span><span>各座剩余：${counts}</span>`
+                + `<span>选择：${action}</span><span>已出：${formatReviewCards(entry.playedCards)}</span><span class="history-detail">${escapeHistoryText(entry.recordedAt)}</span>${remove}</div>`;
+        }
+        html += '</div>';
+        html += '<p class="history-note">仅供本机查看；记录的是当时可见信息，不包含其他玩家的手牌。</p>';
+    } catch (_error) {
+        html += '<p class="history-note">记录的局面无法读取，原有数据未覆盖。</p>';
+    }
     
     html += `
         <div class="modal-buttons">
@@ -1176,8 +1286,9 @@ function showHistoryModal() {
     
     content.innerHTML = html;
     const modalPanel = modal.querySelector('.modal');
-    if (modalPanel) modalPanel.scrollTop = 0;
-    openGameModal('history-modal');
+    if (modalPanel) modalPanel.scrollTop = alreadyOpen ? previousScroll : 0;
+    if (alreadyOpen) modal.querySelector('button:not(:disabled), input, summary, a:not([hidden])')?.focus();
+    else openGameModal('history-modal');
 }
 
 /**

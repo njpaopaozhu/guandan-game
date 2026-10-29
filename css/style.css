@@ -683,6 +683,9 @@ body {
 .history-winner { color: #4ecdc4; }
 .history-detail { color: #aaa; }
 .history-note { color: #ffd700; font-size: 13px; line-height: 1.5; }
+.review-list { max-height: 320px; overflow-y: auto; }
+.review-position { flex-direction: column; align-items: flex-start; gap: 6px; overflow-wrap: anywhere; }
+.review-position > span { max-width: 100%; }
 
 /* ===== 贡牌/还牌界面 ===== */
 .tribute-area {
@@ -862,7 +865,7 @@ body {
     .table-area.is-idle { padding: 12px; min-height: 340px; }
     .controls { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); padding: 8px; }
     .controls .btn { grid-column: span 2; padding: 8px; }
-    .controls #btn-sort, .controls #btn-clear { grid-column: span 3; }
+    .controls #btn-sort, .controls #btn-clear, .controls #btn-mark-position { grid-column: span 2; }
 }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }

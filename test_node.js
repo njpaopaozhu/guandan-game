@@ -1669,6 +1669,55 @@ assert(global.__historyContent.innerHTML.includes('本局记录仍可查看')
     && global.__historyContent.innerHTML.includes('第2局'),
     '损坏的历史缓存不会阻断本局记录查看，并会给出恢复提示');
 vm.runInThisContext(`
+    globalThis.__reviewPreviousPending = pendingReviewPositionId;
+    globalThis.__reviewOriginal = {hands:engine.hands,state:engine.state,currentPlayer:engine.currentPlayer,
+        levelCard:engine.levelCard,lastPlay:engine.lastPlay,lastPlayer:engine.lastPlayer,playedCards:engine.playedCards,selectedCards};
+    globalThis.__reviewStore = new Map();
+    localStorage = { getItem:key => globalThis.__reviewStore.get(key) ?? null,
+        setItem:(key,value) => globalThis.__reviewStore.set(key,value) };
+    const privateHand = new Proxy([{id:'secret-opponent'}], {get(target,key) {
+        if (key !== 'length') throw new Error('opponent hand read'); return target.length;
+    }});
+    engine.hands = [[{id:'own-1',suit:'♠',rank:'2'}],privateHand,privateHand,privateHand];
+    engine.state='playing';engine.currentPlayer=0;engine.levelCard='5';engine.lastPlay=[];engine.lastPlayer=-1;engine.playedCards=[];selectedCards=[];
+    markReviewPosition();
+    completeReviewPosition('play', [engine.hands[0][0]]);
+    globalThis.__reviewRecorded = localStorage.getItem(REVIEW_POSITIONS_KEY);
+    globalThis.__reviewId = JSON.parse(globalThis.__reviewRecorded)[0].id;
+    deleteReviewPosition({dataset:{reviewId:globalThis.__reviewId}});
+    globalThis.__reviewAfterDelete = localStorage.getItem(REVIEW_POSITIONS_KEY);
+    const unsafeRecord = JSON.parse(globalThis.__reviewRecorded)[0];
+    unsafeRecord.levelCard = '<img src=x onerror=alert(1)>';
+    unsafeRecord.hand[0].rank = '<script>alert(1)</script>';
+    localStorage.setItem(REVIEW_POSITIONS_KEY, JSON.stringify([unsafeRecord]));
+    showHistoryModal();
+    globalThis.__reviewRendered = globalThis.__historyContent.innerHTML;
+    localStorage.setItem(REVIEW_POSITIONS_KEY,'{bad json');
+    markReviewPosition();
+    globalThis.__reviewCorrupt = localStorage.getItem(REVIEW_POSITIONS_KEY);
+    const {selectedCards: savedSelection, ...savedEngineFields} = globalThis.__reviewOriginal;
+    Object.assign(engine, savedEngineFields);
+    selectedCards=globalThis.__reviewOriginal.selectedCards;
+    pendingReviewPositionId=globalThis.__reviewPreviousPending;
+    delete globalThis.__reviewPreviousPending;
+    delete globalThis.__reviewOriginal;
+`, { filename: 'review-position-test.js' });
+assert(global.__reviewRecorded && JSON.parse(global.__reviewRecorded)[0].hand[0].id === 'own-1'
+    && JSON.parse(global.__reviewRecorded)[0].action === 'play'
+    && JSON.parse(global.__reviewRecorded)[0].actionCards[0].id === 'own-1'
+    && !global.__reviewRecorded.includes('secret-opponent'), '局面记录只包含本人手牌、公开信息和实际选择');
+assert(global.__reviewCorrupt === '{bad json', '损坏的局面记录不会被覆盖');
+assert(global.__reviewAfterDelete === '[]', '可按标识删除单条本机局面记录');
+assert(global.__reviewRendered.includes('&lt;img src=x onerror=alert(1)&gt;')
+    && global.__reviewRendered.includes('&lt;script&gt;alert(1)&lt;/script&gt;')
+    && !global.__reviewRendered.includes('<script>alert(1)</script>'), '局面记录中的缓存文本被安全转义');
+delete global.__reviewRecorded;
+delete global.__reviewCorrupt;
+delete global.__reviewId;
+delete global.__reviewAfterDelete;
+delete global.__reviewRendered;
+delete global.__reviewStore;
+vm.runInThisContext(`
     engine.history = globalThis.__historyOriginalHistory;
     savedGameHistoryCount = globalThis.__historyTestState.savedGameHistoryCount;
     gameHistoryStorageWarning = globalThis.__historyTestState.gameHistoryStorageWarning;
