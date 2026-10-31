@@ -23,6 +23,11 @@ body {
     position: relative;
 }
 
+.card-counter { margin: 0 0 12px; padding: 10px 14px; border: 1px solid #78927f; border-radius: 10px; background: rgba(0, 0, 0, .32); }
+.card-counter-note { color: #d0dfd4; font-size: 12px; margin: 4px 0; }
+.card-counter-counts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.card-counter-counts span { padding: 4px 7px; border-radius: 6px; background: rgba(255, 255, 255, .12); white-space: nowrap; font-size: 13px; }
+
 /* ===== 顶部信息栏 ===== */
 .header {
     display: grid;

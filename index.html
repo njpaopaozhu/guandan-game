@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0b4a2d">
     <title>掼蛋游戏</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="css/style.css?v=3.2.1-ui20261025">
+    <link rel="stylesheet" href="css/style.css?v=3.2.1-counter20261031">
 </head>
 <body>
     <main class="game-container">
@@ -77,6 +77,12 @@
             </div>
         </section>
 
+        <section id="card-counter" class="card-counter" aria-label="记牌器" hidden>
+            <strong>记牌器</strong><span class="card-counter-note">未见张数：不含自己的手牌和已出牌，不代表某一家的手牌</span>
+            <div id="card-counter-counts" class="card-counter-counts"></div>
+            <p id="card-counter-wild" class="card-counter-note"></p>
+        </section>
+
         <div class="message-area">
             <div class="message" id="message" role="status" aria-live="polite">点击“开始游戏”发牌</div>
         </div>
@@ -97,6 +103,7 @@
         <div class="modal"><div class="modal-content">
             <h2 id="settings-title">游戏设置</h2>
             <div class="setting-row"><div><strong>电脑思考</strong><p>仔细模式会多比较几种出法，最多额外等待约 0.7 秒。</p></div><button type="button" class="toolbar-btn" id="btn-deep-thinking" onclick="toggleDeepThinking()" aria-pressed="false">电脑思考：快速</button></div>
+            <div class="setting-row"><div><strong>记牌器</strong><p>显示除自己手牌和已出牌外的未见张数，仅用于单机。</p></div><button type="button" class="toolbar-btn" id="btn-card-counter" onclick="toggleCardCounter()" aria-pressed="false">记牌器：关闭</button></div>
             <details class="settings-advanced"><summary>高级选项</summary>
                 <p>本机牌谱记录：<span id="ai-learning">尚无记录</span>。记录保存在这台设备上。</p>
                 <div class="settings-actions"><button type="button" class="toolbar-btn" onclick="exportHumanStrategyLog()">导出我的牌谱</button><button type="button" class="toolbar-btn" onclick="closeModal('settings-modal'); showProAISettings()">连接本机 AI</button></div>
@@ -191,6 +198,6 @@
     <script src="js/v5-worker-client.js?v=1.0.0"></script>
     <script src="js/pro-ai-bridge.js?v=3.0.5-g20261020"></script>
     <script src="js/strategy-storage.js?v=2.9.9"></script>
-    <script src="js/game.js?v=3.2.1-ui20261025"></script>
+    <script src="js/game.js?v=3.2.1-counter20261031"></script>
 </body>
 </html>

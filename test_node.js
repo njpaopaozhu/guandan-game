@@ -48,6 +48,19 @@ function assert(condition, msg) {
 
 console.log('=== 掼蛋游戏核心功能测试 ===\n');
 
+{
+    const deck = createDeck();
+    const byId = id => deck.find(card => card.id === id);
+    const counter = countUnseenCards([byId('♥5_0'), byId('joker_b_1')],
+        [byId('♥5_1'), byId('♠5_0'), byId('joker_s_1')], '5');
+    const get = rank => counter.counts.find(item => item.rank === rank).count;
+    assert(get('5') === 5 && get('小王') === 1 && get('大王') === 1 && counter.wild === 0,
+        '记牌器只扣除本人手牌和已出牌，级牌及逢人配不重复计算');
+    const fresh = countUnseenCards([], [], 'A');
+    assert(fresh.counts.find(item => item.rank === 'A').count === 8 && fresh.wild === 2,
+        '记牌器在新副牌恢复两副牌张数');
+}
+
 // ==================== A. 牌级权重测试 ====================
 
 console.log('A. 牌级权重测试\n');

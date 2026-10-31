@@ -9,6 +9,8 @@ let selectedCards = [];  // 当前选中的牌
 let soundEnabled = true; // 音效开关
 // 深度思考是后台可选功能；默认快速模式保证本地直接打开也不等待Worker。
 let deepThinkingEnabled = false;
+let cardCounterEnabled = false;
+const CARD_COUNTER_KEY = 'guandanCardCounterEnabledV1';
 const DEEP_THINKING_BUDGET_MS = 700;
 let deepThinkingClient = null;
 let aiDecisionSerial = 0;
@@ -327,6 +329,8 @@ function exportHumanStrategyLog() {
  * 初始化游戏
  */
 function initGame() {
+    try { cardCounterEnabled = localStorage.getItem(CARD_COUNTER_KEY) === 'true'; } catch (_error) { cardCounterEnabled = false; }
+    updateCardCounterButton();
     const entries = getHumanStrategyLog();
     // 在同一个key中原子替换为无损紧凑格式，保留旧版所有记录并释放容量。
     if (entries.length > 0) persistHumanStrategyLog();
@@ -828,6 +832,48 @@ function updateUI() {
     updateHeader();
     updatePlayers();
     updateButtons();
+    updateCardCounter();
+}
+
+// Only the player's own cards and publicly played cards are inspected.
+function countUnseenCards(ownCards, playedCards, levelCard) {
+    const known = new Set([...ownCards, ...playedCards].map(card => card.id));
+    const unseen = createDeck().filter(card => !known.has(card.id));
+    return {
+        counts: [...RANKS, JOKER_SMALL, JOKER_BIG].map(rank => ({
+            rank, count: unseen.filter(card => card.rank === rank).length
+        })),
+        wild: unseen.filter(card => card.suit === '♥' && card.rank === levelCard).length
+    };
+}
+
+function updateCardCounterButton() {
+    const button = document.getElementById('btn-card-counter');
+    if (!button) return;
+    button.textContent = `记牌器：${cardCounterEnabled ? '开启' : '关闭'}`;
+    button.setAttribute('aria-pressed', String(cardCounterEnabled));
+}
+
+function toggleCardCounter() {
+    cardCounterEnabled = !cardCounterEnabled;
+    try { localStorage.setItem(CARD_COUNTER_KEY, String(cardCounterEnabled)); } catch (_error) { /* 本次页面仍可使用 */ }
+    updateCardCounterButton();
+    updateCardCounter();
+}
+
+function updateCardCounter() {
+    const panel = document.getElementById('card-counter');
+    if (!panel) return;
+    panel.hidden = !cardCounterEnabled || engine.state === 'idle';
+    if (panel.hidden) return;
+    const result = countUnseenCards(engine.hands[0], engine.playedCards, engine.levelCard);
+    const counts = document.getElementById('card-counter-counts');
+    counts.replaceChildren(...result.counts.map(({ rank, count }) => {
+        const item = document.createElement('span');
+        item.textContent = `${rank}${rank === engine.levelCard ? '（级）' : ''} ${count}`;
+        return item;
+    }));
+    document.getElementById('card-counter-wild').textContent = `红桃${engine.levelCard}（逢人配）未见 ${result.wild} 张，已计入级牌张数。`;
 }
 
 /**
